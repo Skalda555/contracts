@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2017 ZeroEx Inc.
+  Copyright 2017 ZeroEx Intl.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
   limitations under the License.
 
 */
+
 pragma solidity 0.4.11;
 
 import "./base/Ownable.sol";
@@ -24,7 +25,7 @@ import "./base/Ownable.sol";
 contract TokenRegistry is Ownable {
 
     event LogAddToken(
-        address token,
+        address indexed token,
         string name,
         string symbol,
         uint8 decimals,
@@ -33,7 +34,7 @@ contract TokenRegistry is Ownable {
     );
 
     event LogRemoveToken(
-        address token,
+        address indexed token,
         string name,
         string symbol,
         uint8 decimals,
@@ -41,10 +42,10 @@ contract TokenRegistry is Ownable {
         bytes swarmHash
     );
 
-    event LogTokenNameChange(address token, string oldName, string newName);
-    event LogTokenSymbolChange(address token, string oldSymbol, string newSymbol);
-    event LogTokenIpfsHashChange(address token, bytes oldIpfsHash, bytes newIpfsHash);
-    event LogTokenSwarmHashChange(address token, bytes oldSwarmHash, bytes newSwarmHash);
+    event LogTokenNameChange(address indexed token, string oldName, string newName);
+    event LogTokenSymbolChange(address indexed token, string oldSymbol, string newSymbol);
+    event LogTokenIpfsHashChange(address indexed token, bytes oldIpfsHash, bytes newIpfsHash);
+    event LogTokenSwarmHashChange(address indexed token, bytes oldSwarmHash, bytes newSwarmHash);
 
     mapping (address => TokenMetadata) public tokens;
     mapping (string => address) tokenBySymbol;
@@ -81,6 +82,11 @@ contract TokenRegistry is Ownable {
         _;
     }
 
+    modifier addressNotNull(address _address) {
+        require(_address != address(0));
+        _;
+    }
+
 
     /// @dev Allows owner to add a new token to the registry.
     /// @param _token Address of new token.
@@ -99,6 +105,7 @@ contract TokenRegistry is Ownable {
         public
         onlyOwner
         tokenDoesNotExist(_token)
+        addressNotNull(_token)
         symbolDoesNotExist(_symbol)
         nameDoesNotExist(_name)
     {
@@ -125,18 +132,16 @@ contract TokenRegistry is Ownable {
 
     /// @dev Allows owner to remove an existing token from the registry.
     /// @param _token Address of existing token.
-    function removeToken(address _token)
+    function removeToken(address _token, uint _index)
         public
         onlyOwner
         tokenExists(_token)
     {
-        for (uint i = 0; i < tokenAddresses.length; i++) {
-            if (tokenAddresses[i] == _token) {
-                tokenAddresses[i] = tokenAddresses[tokenAddresses.length - 1];
-                tokenAddresses.length -= 1;
-                break;
-            }
-        }
+        require(tokenAddresses[_index] == _token);
+
+        tokenAddresses[_index] = tokenAddresses[tokenAddresses.length - 1];
+        tokenAddresses.length -= 1;
+
         TokenMetadata storage token = tokens[_token];
         LogRemoveToken(
             token.token,

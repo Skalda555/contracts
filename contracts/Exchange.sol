@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2017 ZeroEx Inc.
+  Copyright 2017 ZeroEx Intl.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
   limitations under the License.
 
 */
+
 pragma solidity 0.4.11;
 
 import "./TokenTransferProxy.sol";
@@ -99,8 +100,8 @@ contract Exchange is SafeMath {
     /// @param fillTakerTokenAmount Desired amount of takerToken to fill.
     /// @param shouldThrowOnInsufficientBalanceOrAllowance Test if transfer will fail before attempting.
     /// @param v ECDSA signature parameter v.
-    /// @param r CDSA signature parameters r.
-    /// @param s CDSA signature parameters s.
+    /// @param r ECDSA signature parameters r.
+    /// @param s ECDSA signature parameters s.
     /// @return Total amount of takerToken filled in trade.
     function fillOrder(
           address[5] orderAddresses,
@@ -215,12 +216,12 @@ contract Exchange is SafeMath {
     /// @dev Cancels the input order.
     /// @param orderAddresses Array of order's maker, taker, makerToken, takerToken, and feeRecipient.
     /// @param orderValues Array of order's makerTokenAmount, takerTokenAmount, makerFee, takerFee, expirationTimestampInSec, and salt.
-    /// @param canceltakerTokenAmount Desired amount of takerToken to cancel in order.
+    /// @param cancelTakerTokenAmount Desired amount of takerToken to cancel in order.
     /// @return Amount of takerToken cancelled.
     function cancelOrder(
         address[5] orderAddresses,
         uint[6] orderValues,
-        uint canceltakerTokenAmount)
+        uint cancelTakerTokenAmount)
         public
         returns (uint)
     {
@@ -239,7 +240,7 @@ contract Exchange is SafeMath {
         });
 
         require(order.maker == msg.sender);
-        require(order.makerTokenAmount > 0 && order.takerTokenAmount > 0);
+        require(order.makerTokenAmount > 0 && order.takerTokenAmount > 0 && cancelTakerTokenAmount > 0);
 
         if (block.timestamp >= order.expirationTimestampInSec) {
             LogError(uint8(Errors.ORDER_EXPIRED), order.orderHash);
@@ -247,7 +248,7 @@ contract Exchange is SafeMath {
         }
 
         uint remainingTakerTokenAmount = safeSub(order.takerTokenAmount, getUnavailableTakerTokenAmount(order.orderHash));
-        uint cancelledTakerTokenAmount = min256(canceltakerTokenAmount, remainingTakerTokenAmount);
+        uint cancelledTakerTokenAmount = min256(cancelTakerTokenAmount, remainingTakerTokenAmount);
         if (cancelledTakerTokenAmount == 0) {
             LogError(uint8(Errors.ORDER_FULLY_FILLED_OR_CANCELLED), order.orderHash);
             return 0;
@@ -277,9 +278,8 @@ contract Exchange is SafeMath {
     /// @param orderValues Array of order's makerTokenAmount, takerTokenAmount, makerFee, takerFee, expirationTimestampInSec, and salt.
     /// @param fillTakerTokenAmount Desired amount of takerToken to fill.
     /// @param v ECDSA signature parameter v.
-    /// @param r CDSA signature parameters r.
-    /// @param s CDSA signature parameters s.
-    /// @return Success of entire fillTakerTokenAmount being filled.
+    /// @param r ECDSA signature parameters r.
+    /// @param s ECDSA signature parameters s.
     function fillOrKillOrder(
         address[5] orderAddresses,
         uint[6] orderValues,
@@ -288,7 +288,6 @@ contract Exchange is SafeMath {
         bytes32 r,
         bytes32 s)
         public
-        returns (bool)
     {
         require(fillOrder(
             orderAddresses,
@@ -299,7 +298,6 @@ contract Exchange is SafeMath {
             r,
             s
         ) == fillTakerTokenAmount);
-        return true;
     }
 
     /// @dev Synchronously executes multiple fill orders in a single transaction.
@@ -310,7 +308,6 @@ contract Exchange is SafeMath {
     /// @param v Array ECDSA signature v parameters.
     /// @param r Array of ECDSA signature r parameters.
     /// @param s Array of ECDSA signature s parameters.
-    /// @return Successful if no orders throw.
     function batchFillOrders(
         address[5][] orderAddresses,
         uint[6][] orderValues,
@@ -320,7 +317,6 @@ contract Exchange is SafeMath {
         bytes32[] r,
         bytes32[] s)
         public
-        returns (bool)
     {
         for (uint i = 0; i < orderAddresses.length; i++) {
             fillOrder(
@@ -333,7 +329,6 @@ contract Exchange is SafeMath {
                 s[i]
             );
         }
-        return true;
     }
 
     /// @dev Synchronously executes multiple fillOrKill orders in a single transaction.
@@ -343,7 +338,6 @@ contract Exchange is SafeMath {
     /// @param v Array ECDSA signature v parameters.
     /// @param r Array of ECDSA signature r parameters.
     /// @param s Array of ECDSA signature s parameters.
-    /// @return Success of all orders being filled with respective fillTakerTokenAmount.
     function batchFillOrKillOrders(
         address[5][] orderAddresses,
         uint[6][] orderValues,
@@ -352,7 +346,6 @@ contract Exchange is SafeMath {
         bytes32[] r,
         bytes32[] s)
         public
-        returns (bool)
     {
         for (uint i = 0; i < orderAddresses.length; i++) {
             fillOrKillOrder(
@@ -364,7 +357,6 @@ contract Exchange is SafeMath {
                 s[i]
             );
         }
-        return true;
     }
 
     /// @dev Synchronously executes multiple fill orders in a single transaction until total fillTakerTokenAmount filled.
@@ -408,13 +400,11 @@ contract Exchange is SafeMath {
     /// @param orderAddresses Array of address arrays containing individual order addresses.
     /// @param orderValues Array of uint arrays containing individual order values.
     /// @param cancelTakerTokenAmounts Array of desired amounts of takerToken to cancel in orders.
-    /// @return Successful if no cancels throw.
     function batchCancelOrders(
         address[5][] orderAddresses,
         uint[6][] orderValues,
         uint[] cancelTakerTokenAmounts)
         public
-        returns (bool)
     {
         for (uint i = 0; i < orderAddresses.length; i++) {
             cancelOrder(
@@ -423,7 +413,6 @@ contract Exchange is SafeMath {
                 cancelTakerTokenAmounts[i]
             );
         }
-        return true;
     }
 
     /*
