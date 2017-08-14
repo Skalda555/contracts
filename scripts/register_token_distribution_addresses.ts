@@ -109,10 +109,12 @@ class RegistrationManager {
         await this.tokenSale.changeRegistrationStatuses(batch, isRegistered, txOpts);
     }
     public async registerAddressesInBatchesAsync(batches: string[][], gas: number): Promise<void> {
+        const registrationPromises = [];
         for (const [index, batch] of batches.entries()) {
             log(`Registered batches: ${index}/${batches.length} ✅`);
-            await this.registerBatchOfAddressesAsync(batch, gas);
+            registrationPromises.push(this.registerBatchOfAddressesAsync(batch, gas));
         }
+        await Promise.all(registrationPromises);
         log('Registration succeeded ✅');
     };
     public async isRegistered(address: string): Promise<boolean> {
